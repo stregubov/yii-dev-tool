@@ -30,13 +30,37 @@ final class StatusCommand extends PackageCommand
         $io = $this->getIO();
         $io->preparePackageHeader($package, 'Git status of {package}');
 
-        $process = new Process(['git', 'status', '-s'], $package->getPath());
+        $process = new Process(['git', 'status', '-sb'], $package->getPath());
         $process->run();
         $output = $process->getOutput();
 
+        $branchNameMatches = [];
+        preg_match('/##\s(.+)/', $output, $branchNameMatches);
+
+        if (!empty($branchNameMatches[0])) {
+            $output = trim(str_replace($branchNameMatches[0], '', $output));
+        }
+
+        $branchName = null;
+        if (!empty($branchNameMatches[1])) {
+            $branchName = $branchNameMatches[1];
+        }
+
         if (empty($output)) {
-            $io->success('✔ nothing to commit, working tree clean');
+            $successText = '✔ nothing to commit, working tree clean';
+
+            if (!empty($branchName)) {
+                $successText = "[$branchName] $successText";
+            }
+
+            $io->important()->success($successText);
+            $io->done();
         } else {
+
+            if (!empty($branchName)) {
+                $output = "[$branchName]".PHP_EOL.$output;
+            }
+
             $io->important()->info($output);
         }
     }
